@@ -1,6 +1,8 @@
 using Hotels.Data;
 using Hotels.Data.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting;
+using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,6 +16,7 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    app.MapScalarApiReference();
 }
 
 app.UseHttpsRedirection();
@@ -23,6 +26,8 @@ api.MapGet("/hotels", GetHotels).WithName("GetHotels");
 
 api.MapPost("/db/seed", Seed);
 api.MapPost("/db/reset", Reset);
+
+app.Run();
 
 async Task<string> Seed(HotelsContext context)
 {
@@ -65,13 +70,14 @@ async Task<string> Seed(HotelsContext context)
 
 async Task<string> Reset(HotelsContext context)
 {
+    // must be ordered correctly to ensure referential integrity is respected
+    await context.Rooms.ExecuteDeleteAsync();
     await context.Hotels.ExecuteDeleteAsync();
     return "Reset";
 }
 
 async Task<List<Hotel>> GetHotels(HotelsContext context)
 {
-    return await context.Hotels.ToListAsync();
+    return await context.Hotels.Include(x => x.Rooms).ToListAsync();
 }
 
-app.Run();

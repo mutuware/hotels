@@ -6,6 +6,7 @@ namespace Hotels.Data
     public class HotelsContext(DbContextOptions options) : DbContext(options)
     {
         public DbSet<Hotel> Hotels { get; set; } = null!;
+        public DbSet<Room> Rooms { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
