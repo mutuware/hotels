@@ -3,6 +3,9 @@
     public class Booking
     {
         public int Id { get; set; }
+        public int HotelId { get; set; }
+        public int RoomId { get; set; }
+
         public Hotel Hotel { get; set; } = null!;
         public Room Room { get; set; } = null!;
         public DateTime StartDate { get; set; }
