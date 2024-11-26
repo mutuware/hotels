@@ -17,7 +17,7 @@ namespace Hotels.Api
             api.MapGet("/hotels", (HotelsContext context, string? name) => GetHotels(context, name));
             api.MapGet("/hotels/{hotelId}", (HotelsContext context, int hotelId) => GetHotel(context, hotelId));
             api.MapGet("/hotels/{hotelId}/rooms/{roomId}", (HotelsContext context, int hotelId, int roomId) => GetRoom(context, hotelId, roomId));
-            api.MapGet("/bookings/{reference}", (HotelsContext context, string reference) => GetBookingReference(context, reference)).WithName("GetBookingByReference");
+            api.MapGet("/bookings", (HotelsContext context, string? reference) => GetBookingReference(context, reference)).WithName("GetBookingByReference");
             api.MapPost("/bookings", (HotelsContext context, CreateBooking booking) => PostBookingReference(context, booking));
             api.MapGet("/availability", (HotelsContext context, DateTime from, DateTime to, int people) => GetAvailability(context, from, to, people));
             api.MapPost("/db/seed", Seed).WithTags("Hotels.Api");
@@ -52,11 +52,24 @@ namespace Hotels.Api
                 : TypedResults.NotFound();
         }
 
-        private static async Task<Results<CreatedAtRoute<Booking>, InternalServerError>> PostBookingReference(HotelsContext context, CreateBooking booking)
+        private static async Task<Results<CreatedAtRoute<Booking>, BadRequest, InternalServerError>> PostBookingReference(HotelsContext context, CreateBooking booking)
         {
             try
             {
-                var newBooking = new Booking { HotelId = booking.HotelId, RoomId = booking.RoomId, StartDate = booking.StartDate, EndDate = booking.EndDate };
+                // validate that the incoming hotelId & roomId are valid
+                var hotel = context.Find<Hotel>(booking.HotelId);
+                if (hotel == null)
+                {
+                    return TypedResults.BadRequest();
+                }
+
+                var room = context.Rooms.SingleOrDefault(x => x.Id == booking.RoomId);
+                if (room == null)
+                {
+                    return TypedResults.BadRequest();
+                }
+
+                var newBooking = new Booking(hotel, room, booking.StartDate, booking.EndDate);
 
                 context.Bookings.Add(newBooking);
                 await context.SaveChangesAsync();
@@ -70,12 +83,18 @@ namespace Hotels.Api
             }
         }
 
-        private static async Task<Results<Ok<Booking>, NotFound>> GetBookingReference(HotelsContext context, string reference)
+        private static async Task<Results<Ok<List<Booking>>, NotFound>> GetBookingReference(HotelsContext context, string? reference)
         {
-            var booking = await context.Bookings.Include(x => x.Hotel).Include(x => x.Room).SingleOrDefaultAsync(x => x.Reference == reference);
+            var query = context.Bookings.AsQueryable();
 
-            return booking != null
-                ? TypedResults.Ok(booking)
+            if (!string.IsNullOrWhiteSpace(reference))
+            {
+                query = query.Where(x => x.Reference == reference);
+            }
+
+            var results = await query.ToListAsync();
+            return results != null
+                ? TypedResults.Ok(results)
                 : TypedResults.NotFound();
         }
 
@@ -95,43 +114,32 @@ namespace Hotels.Api
         {
             await Reset(context);
 
-            var room1 = new DeluxeRoom();
-            var hotel1 = new Hotel
-            {
-                Name = "Raffles",
-                Rooms = [
-                    room1, new DeluxeRoom(), new DeluxeRoom(), new DeluxeRoom(), new DeluxeRoom(), new DeluxeRoom()
-                ]
-            };
-
-            room1.Bookings =
-            [
-                new Booking { Reference="abc", Hotel = hotel1, Room = room1, StartDate = new DateTime(2024, 12, 1), EndDate = new DateTime(2024, 12, 31) }
-            ];
-
             await context.Hotels.AddRangeAsync(
-                    hotel1,
-                    new Hotel
-                    {
-                        Name = "Pullman",
-                        Rooms = [
+                    new Hotel("Raffles",
+                        [
+                        new DeluxeRoom(), new DeluxeRoom(), new DeluxeRoom(), new DeluxeRoom(), new DeluxeRoom(), new DeluxeRoom()
+                    ]),
+                    new Hotel("Pullman",
+                        [
                             new SingleRoom(), new DoubleRoom(), new DoubleRoom(), new DeluxeRoom(), new DeluxeRoom(), new DeluxeRoom()
-                        ]
-                    },
-                    new Hotel
-                    {
-                        Name = "Novotel",
-                        Rooms = [
+                    ]),
+                    new Hotel("Novotel",
+                        [
                         new SingleRoom(), new DoubleRoom(), new DoubleRoom(), new DoubleRoom(), new DoubleRoom(), new DoubleRoom()
-                    ]
-                    },
-                    new Hotel
-                    {
-                        Name = "Ibis",
-                        Rooms = [
+                    ])
+                    ,
+                    new Hotel("Ibis",
+                        [
                         new SingleRoom(), new SingleRoom(), new DoubleRoom(), new DoubleRoom(),new DoubleRoom(), new DoubleRoom()
-                    ]
-                    });
+                    ]));
+
+            await context.SaveChangesAsync();
+
+            var hotel = context.Hotels.Single(x => x.Name == "Raffles");
+            var room = hotel.Rooms.First();
+            var booking = new Booking(hotel, room, new DateTime(2024, 12, 1), new DateTime(2024, 12, 31));
+
+            context.Bookings.Add(booking);
 
             await context.SaveChangesAsync();
 

@@ -1,9 +1,13 @@
-﻿namespace Hotels.Data.Entities
+﻿using Microsoft.EntityFrameworkCore;
+
+namespace Hotels.Data.Entities
 {
-    public class Hotel
+    public class Hotel(string name, List<Room> rooms)
     {
-        public int Id { get; set; }
-        public string Name { get; set; } = string.Empty;
-        public List<Room> Rooms { get; set; } = [];
+        private Hotel() : this(string.Empty, []) { }
+
+        public int Id { get; private set; }
+        public string Name { get; private set; } = name;
+        public List<Room> Rooms { get; private set; } = rooms;
     }
 }
