@@ -8,7 +8,7 @@ using System.Text.Json.Serialization;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddOpenApi();
-builder.Services.AddDbContext<HotelsContext>(options => options.UseSqlite("Data Source=hotels.db"));
+builder.Services.AddDbContext<HotelsContext>(options => options.UseSqlite(builder.Configuration.GetConnectionString("AppDatabase")));
 
 // TODO: Return DTOs not Entities from API and this can be removed.
 builder.Services.Configure<JsonOptions>(options => options.SerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles);
