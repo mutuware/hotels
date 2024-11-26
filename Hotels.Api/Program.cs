@@ -19,7 +19,7 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
-    app.MapScalarApiReference();
+    app.MapScalarApiReference(x => x.AddServer(new ScalarServer(builder.Configuration["server"]!, "Hotel API")));
 }
 
 app.UseHttpsRedirection();
