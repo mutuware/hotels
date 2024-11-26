@@ -17,8 +17,8 @@ namespace Hotels.Api
             api.MapGet("/hotels", (HotelsContext context, string? name) => GetHotels(context, name));
             api.MapGet("/hotels/{hotelId}", (HotelsContext context, int hotelId) => GetHotel(context, hotelId));
             api.MapGet("/hotels/{hotelId}/rooms/{roomId}", (HotelsContext context, int hotelId, int roomId) => GetRoom(context, hotelId, roomId));
-            api.MapGet("/bookings", (HotelsContext context, string? reference) => GetBookingReference(context, reference)).WithName("GetBookingByReference");
-            api.MapPost("/bookings", (HotelsContext context, CreateBooking booking) => PostBookingReference(context, booking));
+            api.MapGet("/bookings", (HotelsContext context, string? reference) => GetBookings(context, reference)).WithName("GetBookingByReference");
+            api.MapPost("/bookings", (HotelsContext context, CreateBookingDTO booking) => PostBooking(context, booking));
             api.MapGet("/availability", (HotelsContext context, DateTime from, DateTime to, int people) => GetAvailability(context, from, to, people));
             api.MapPost("/db/seed", Seed).WithTags("Hotels.Api");
             api.MapPost("/db/reset", Reset).WithTags("Hotels.Api");
@@ -52,7 +52,26 @@ namespace Hotels.Api
                 : TypedResults.NotFound();
         }
 
-        private static async Task<Results<CreatedAtRoute<Booking>, BadRequest, InternalServerError>> PostBookingReference(HotelsContext context, CreateBooking booking)
+        private static async Task<Results<Ok<List<BookingDTO>>, NotFound>> GetBookings(HotelsContext context, string? reference)
+        {
+            var query = context.Bookings.Include(x => x.Hotel).Include(x => x.Room).AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(reference))
+            {
+                query = query.Where(x => x.Reference == reference);
+            }
+
+            var results = await query.ToListAsync();
+
+            var bookingDTOs = results.Select(x => new BookingDTO { 
+                StartDate = x.StartDate, EndDate = x.EndDate, HotelId = x.Hotel.Id, RoomId = x.Room.Id, Reference = x.Reference }).ToList();
+
+            return bookingDTOs != null
+                ? TypedResults.Ok(bookingDTOs)
+                : TypedResults.NotFound();
+        }
+
+        private static async Task<Results<CreatedAtRoute<Booking>, BadRequest, InternalServerError>> PostBooking(HotelsContext context, CreateBookingDTO booking)
         {
             try
             {
@@ -81,21 +100,6 @@ namespace Hotels.Api
             {
                 return TypedResults.InternalServerError();
             }
-        }
-
-        private static async Task<Results<Ok<List<Booking>>, NotFound>> GetBookingReference(HotelsContext context, string? reference)
-        {
-            var query = context.Bookings.AsQueryable();
-
-            if (!string.IsNullOrWhiteSpace(reference))
-            {
-                query = query.Where(x => x.Reference == reference);
-            }
-
-            var results = await query.ToListAsync();
-            return results != null
-                ? TypedResults.Ok(results)
-                : TypedResults.NotFound();
         }
 
         private static Ok<List<Room>> GetAvailability(HotelsContext context, DateTime from, DateTime to, int people)
@@ -135,11 +139,13 @@ namespace Hotels.Api
 
             await context.SaveChangesAsync();
 
+            // Add a few booking at Raffles
             var hotel = context.Hotels.Single(x => x.Name == "Raffles");
-            var room = hotel.Rooms.First();
-            var booking = new Booking(hotel, room, new DateTime(2024, 12, 1), new DateTime(2024, 12, 31));
+            var booking1 = new Booking(hotel, hotel.Rooms.ElementAt(0), new DateTime(2024, 12, 1), new DateTime(2024, 12, 5));
+            var booking2 = new Booking(hotel, hotel.Rooms.ElementAt(1), new DateTime(2024, 12, 1), new DateTime(2025, 12, 15));
+            var booking3 = new Booking(hotel, hotel.Rooms.ElementAt(2), new DateTime(2024, 12, 1), new DateTime(2025, 12, 31));
 
-            context.Bookings.Add(booking);
+            context.Bookings.AddRange(booking1, booking2, booking3);
 
             await context.SaveChangesAsync();
 
