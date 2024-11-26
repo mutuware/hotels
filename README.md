@@ -1,5 +1,5 @@
 # Hotels
-Asp.Net repo for hotels
+Asp.Net repo for Hotels
 
 ## API documentation
 
