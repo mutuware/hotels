@@ -34,3 +34,30 @@ dotnet ef migrations add InitialMigration --project Hotels.Data --startup-projec
 ```
 dotnet ef database update --project Hotels.Data --startup-project Hotels.Api
 ```
+
+## Example GET Queries
+
+### Hotels
+
+All hotels
+https://hotels-api-bkb3fdbbddesbsbk.ukwest-01.azurewebsites.net/api/hotels/
+
+### Bookings
+
+All bookings
+https://hotels-api-bkb3fdbbddesbsbk.ukwest-01.azurewebsites.net/api/bookings
+
+Booking by reference
+https://hotels-api-bkb3fdbbddesbsbk.ukwest-01.azurewebsites.net/api/bookings?reference=45241004-a698-46d8-897b-fd3d67265863
+
+
+### Availability
+
+Raffles room are unavailable in December
+https://hotels-api-bkb3fdbbddesbsbk.ukwest-01.azurewebsites.net/api/availability?from=2024-12-01T00:00:00.000Z&to=2024-12-02T00:00:00.000Z&people=2
+
+All rooms available in November
+https://hotels-api-bkb3fdbbddesbsbk.ukwest-01.azurewebsites.net/api/availability?from=2024-11-01T00:00:00.000Z&to=2024-11-02T00:00:00.000Z&people=2
+
+No 3 people rooms available
+https://hotels-api-bkb3fdbbddesbsbk.ukwest-01.azurewebsites.net/api/availability?from=2024-11-01T00:00:00.000Z&to=2024-11-02T00:00:00.000Z&people=3
